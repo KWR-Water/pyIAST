@@ -20,7 +20,8 @@ def iast(partial_pressures,
          isotherms,
          verboseflag=False,
          warningoff=False,
-         adsorbed_mole_fraction_guess=None):
+         adsorbed_mole_fraction_guess=None,
+         method='lm', tol=None, maxiter=100):
     """
     Perform IAST calculation to predict multi-component adsorption isotherm from
     pure component adsorption isotherms.
@@ -111,7 +112,7 @@ def iast(partial_pressures,
     res = scipy.optimize.root(
         spreading_pressure_differences,
         adsorbed_mole_fraction_guess[:-1],
-        method='lm')
+        method=method, tol=tol, options={'maxiter':maxiter})
 
     if not res.success:
         print(res.message)
