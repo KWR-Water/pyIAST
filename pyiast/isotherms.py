@@ -26,13 +26,18 @@ _VERSION = "1.4.3"
 
 # ! list of models implemented in pyIAST
 _MODELS = [
-    "Langmuir", "Quadratic", "BET", "Henry", "TemkinApprox", "DSLangmuir"
+    "Langmuir", "Quadratic", "BET", "Henry", "TemkinApprox", "DSLangmuir",
+    "Freundlich"
 ]
 
 # ! dictionary of parameters involved in each model
 _MODEL_PARAMS = {
     "Langmuir": {
         "M": np.nan,
+        "K": np.nan
+    },
+    "Freundlich": {
+        "n_inv": np.nan,
         "K": np.nan
     },
     "Quadratic": {
@@ -91,6 +96,9 @@ def get_default_guess_params(model, df, pressure_key, loading_key):
 
     if model == "Langmuir":
         return {"M": saturation_loading, "K": langmuir_k}
+
+    if model == "Freundlich":
+        return {"n_inv": 0.5, "K": 10}
 
     if model == "Quadratic":
         # Quadratic = Langmuir when Kb = Ka^2. This is our default assumption.
@@ -256,6 +264,9 @@ class ModelIsotherm:
             return self.params["M"] * self.params["K"] * pressure / \
                    (1.0 + self.params["K"] * pressure)
 
+        if self.model == 'Freundlich':
+            return self.params['K'] * pressure ** self.params['n_inv']
+
         if self.model == "Quadratic":
             return self.params["M"] * (
                 self.params["Ka"] + 2.0 * self.params["Kb"] * pressure
@@ -327,6 +338,17 @@ class ModelIsotherm:
             self.params[param_names[j]] = opt_res.x[j]
 
         self.rmse = np.sqrt(opt_res.fun / self.df.shape[0])
+        y_i = self.df[self.loading_key]
+        y_bar = self.df[self.loading_key].mean()
+        y_i_hat = self.loading(self.df[self.pressure_key].values)
+        n = len(self.df)
+
+        rmse = np.sqrt((1. / n) * np.sum((y_i - y_i_hat)**2.))
+        sse = np.sum((y_i - y_i_hat)**2.)
+        tss = np.sum((y_i - y_bar)**2.)
+
+        self.r2   = 1. - sse / tss
+
 
     def spreading_pressure(self, pressure):
         """
@@ -347,8 +369,15 @@ class ModelIsotherm:
         :return: spreading pressure, :math:`\\Pi`
         :rtype: Float
         """
+        if pressure < 0:
+            pressure = 0
+            Warning('pressure (concentration) is below zero, this is unphysical, so set to zero.')
+
         if self.model == "Langmuir":
             return self.params["M"] * np.log(1.0 + self.params["K"] * pressure)
+
+        if self.model == "Freundlich":
+            raise Exception("IAST is not allowed for Freundlich isotherms as they do not obey Henry's law for low concentrations.")
 
         if self.model == "Quadratic":
             return self.params["M"] * np.log(1.0 + self.params["Ka"] * pressure
