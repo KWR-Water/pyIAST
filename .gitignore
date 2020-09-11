@@ -1,3 +1,4 @@
 *.egg-info
 test/*/*pdf
 test/*/*png
+.vscode/settings.json
