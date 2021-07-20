@@ -184,6 +184,41 @@ class ModelIsotherm:
     """
 
     def __init__(self,
+                 model,
+                 parameters: dict):
+        """
+        Instantiation. A `ModelIsotherm` class is instantiated by passing it the
+        pure-component adsorption isotherm in the form of a Pandas DataFrame.
+        The least squares data fitting is done here.
+
+        Parameters
+        ----------
+        model: string
+          describing the type of isotherm
+        parameters: dict
+            Dict containing model parameters of the isotherm
+
+        :return: self
+        :rtype: ModelIsotherm
+        """
+        if model not in _MODELS:
+            raise Exception("Model %s not an option in pyIAST. See viable"
+                            "models with pyiast._MODELS" % model)
+
+        #: Name of analytical model to fit to pure-component isotherm data
+        #: adsorption isotherm
+        self.model = model
+
+        self.df = None
+        self.loading_key = None
+        self.pressure_key = None
+        self.rmse = None
+        self.param_guess = None
+
+        self.params = parameters
+
+    @classmethod
+    def initialize_from_df(cls,
                  df,
                  loading_key=None,
                  pressure_key=None,
@@ -204,7 +239,7 @@ class ModelIsotherm:
             to use in fitting model to data.
             See [here](http://docs.scipy.org/doc/scipy/reference/optimize.html#module-scipy.optimize).
 
-        :return: self
+        :return: cls
         :rtype: ModelIsotherm
         """
         if model is None:
@@ -214,9 +249,7 @@ class ModelIsotherm:
             raise Exception("Model %s not an option in pyIAST. See viable"
                             "models with pyiast._MODELS" % model)
 
-        #: Name of analytical model to fit to pure-component isotherm data
-        #: adsorption isotherm
-        self.model = model
+        self = cls(model, _MODEL_PARAMS[model])
 
         #: Pandas DataFrame on which isotherm was fit
         self.df = df
@@ -247,8 +280,10 @@ class ModelIsotherm:
         # initialize params as nan
         self.params = copy.deepcopy(_MODEL_PARAMS[model])
 
-        # fit model to isotherm data in self.df
+        # fit model to isotherm data in cls.df
         self._fit(optimization_method)
+
+        return self
 
     def loading(self, pressure):
         """
