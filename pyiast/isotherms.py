@@ -224,7 +224,8 @@ class ModelIsotherm:
                  pressure_key=None,
                  model=None,
                  param_guess=None,
-                 optimization_method="Nelder-Mead"):
+                 optimization_method="Powell",
+                 bounds=None):
         """
         Instantiation. A `ModelIsotherm` class is instantiated by passing it the
         pure-component adsorption isotherm in the form of a Pandas DataFrame.
@@ -236,11 +237,14 @@ class ModelIsotherm:
         :param param_guess: Dict starting guess for model parameters in the
             data fitting routine
         :param optimization_method: String method in SciPy minimization function
-            to use in fitting model to data.
+            to use in fitting model to data. Powell allows for the use of bounds
             See [here](http://docs.scipy.org/doc/scipy/reference/optimize.html#module-scipy.optimize).
+        :param bounds: list of lists, lower and upper bounds for every parameter, use None when no
+                       estimate is known ((lower_b1, upper_b1), (lower_b2, upper_b2)) etc.
 
         :return: cls
         :rtype: ModelIsotherm
+
         """
         if model is None:
             raise Exception("Specify a model to fit to the pure-component"
@@ -281,7 +285,7 @@ class ModelIsotherm:
         self.params = copy.deepcopy(_MODEL_PARAMS[model])
 
         # fit model to isotherm data in cls.df
-        self._fit(optimization_method)
+        self._fit(optimization_method, bounds)
 
         return self
 
@@ -331,7 +335,7 @@ class ModelIsotherm:
                      self.params["theta"] * langmuir_fractional_loading ** 2 * \
                      (langmuir_fractional_loading - 1))
 
-    def _fit(self, optimization_method):
+    def _fit(self, optimization_method, bounds):
         """
         Fit model to data using nonlinear optimization with least squares loss
             function. Assigns params to self.
@@ -358,7 +362,7 @@ class ModelIsotherm:
 
         # minimize RSS
         opt_res = scipy.optimize.minimize(
-            residual_sum_of_squares, guess, method=optimization_method)
+            residual_sum_of_squares, guess, method=optimization_method, bounds=bounds)
         if not opt_res.success:
             print((opt_res.message))
             print(("\n\tDefault starting guess for parameters:",
@@ -654,8 +658,12 @@ def plot_isotherm(isotherm,
                     isotherm.df[isotherm.pressure_key].min(),
                     isotherm.df[isotherm.pressure_key].max(), 200)
         plt.plot(pressure, isotherm.loading(pressure))
-    plt.scatter(isotherm.df[isotherm.pressure_key],
-                isotherm.df[isotherm.loading_key])
+    try:
+        plt.scatter(isotherm.df[isotherm.pressure_key],
+                    isotherm.df[isotherm.loading_key])
+    except TypeError:
+        pass
+
     if xlogscale:
         plt.xscale("log")
     if ylogscale:
