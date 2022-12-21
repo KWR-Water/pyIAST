@@ -3,3 +3,4 @@ test/*/*pdf
 test/*/*png
 .vscode/settings.json
 pyiast/__pycache__
+build

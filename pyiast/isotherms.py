@@ -66,6 +66,11 @@ _MODEL_PARAMS = {
     }
 }
 
+class IsothermError(RuntimeError):
+    """ Custom error when isotherm fitting fails"""
+    def __str__(self) -> str:
+        return f'{super().__str__()} could not find isotherm'
+
 
 def get_default_guess_params(model, df, pressure_key, loading_key):
     """
@@ -364,13 +369,10 @@ class ModelIsotherm:
         opt_res = scipy.optimize.minimize(
             residual_sum_of_squares, guess, method=optimization_method, bounds=bounds)
         if not opt_res.success:
-            print((opt_res.message))
-            print(("\n\tDefault starting guess for parameters:",
-                   self.param_guess))
-            raise Exception("""Minimization of RSS for %s isotherm fitting
+            raise IsothermError(f"""Minimization of RSS for {self.model} isotherm fitting
             failed. Try a different starting point in the nonlinear optimization
             by passing a dictionary of parameter guesses, param_guess, to the
-            constructor""" % self.model)
+            constructor. used param_guess: {self.param_guess}, solver error: {opt_res.message}""")
 
         # assign params
         for j in range(len(param_names)):
