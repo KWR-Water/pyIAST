@@ -304,41 +304,83 @@ class ModelIsotherm:
             in instantiation) using fitted model params in `self.params`.
         :rtype: Float or Array
         """
-        if self.model == "Langmuir":
-            return self.params["M"] * self.params["K"] * pressure / \
-                   (1.0 + self.params["K"] * pressure)
 
         if self.model == 'Freundlich':
             return self.params['K'] * pressure ** self.params['n_inv']
 
-        if self.model == "Quadratic":
+        elif self.model == "Langmuir":
+            return self.params["M"] * self.params["K"] * pressure / \
+                   (1.0 + self.params["K"] * pressure)
+        elif self.model == "Quadratic":
             return self.params["M"] * (
                 self.params["Ka"] + 2.0 * self.params["Kb"] * pressure
             ) * pressure / (1.0 + self.params["Ka"] * pressure +
                             self.params["Kb"] * pressure**2)
 
-        if self.model == "BET":
+        elif self.model == "BET":
             return self.params["M"] * self.params["Ka"] * pressure / (
                 (1.0 - self.params["Kb"] * pressure) *
                 (1.0 - self.params["Kb"] * pressure +
                  self.params["Ka"] * pressure))
 
-        if self.model == "DSLangmuir":
+        elif self.model == "DSLangmuir":
             # K_i P
             k1p = self.params["K1"] * pressure
             k2p = self.params["K2"] * pressure
             return self.params["M1"] * k1p / (1.0 + k1p) + \
                    self.params["M2"] * k2p / (1.0 + k2p)
 
-        if self.model == "Henry":
+        elif self.model == "Henry":
             return self.params["KH"] * pressure
 
-        if self.model == "TemkinApprox":
+        elif self.model == "TemkinApprox":
             langmuir_fractional_loading = self.params["K"] * pressure / \
                                           (1.0 + self.params["K"] * pressure)
             return self.params["M"] * (langmuir_fractional_loading + \
                      self.params["theta"] * langmuir_fractional_loading ** 2 * \
                      (langmuir_fractional_loading - 1))
+        raise ValueError(f"Invalid model {self.model}")
+
+    def concentration(self, loading):
+        """ Convenience method because in activated carbon use for
+        water treatment, the concentration of a pollutant is used instead of
+        the pressure to determine the loading. """
+        return self.pressure(loading)
+
+    def pressure(self, loading):
+        """
+        Given stored model parameters, compute pressure at loading (this
+        is basically an inverted use of the isotherm, i.e., `self.loading` method).
+
+        :param loading: Float or Array loading (in corresponding units as df
+            in instantiation)
+        :return: predicted pressure at loading (in corresponding units as df
+            in instantiation) using fitted model params in `self.params`.
+        :rtype: Float or Array
+        """
+        if self.model == 'Freundlich':
+            return (loading / self.params['K']) ** (1./self.params['n_inv'])
+
+        elif self.model == "Langmuir":
+            raise NotImplementedError()
+
+        elif self.model == "Quadratic":
+            raise NotImplementedError()
+
+        elif self.model == "BET":
+            raise NotImplementedError()
+
+        elif self.model == "DSLangmuir":
+            raise NotImplementedError()
+
+        elif self.model == "Henry":
+            raise NotImplementedError()
+
+        elif self.model == "TemkinApprox":
+            raise NotImplementedError()
+
+        else:
+            raise ValueError(f"Invalid model {self.model}")
 
     def _fit(self, optimization_method, bounds):
         """
